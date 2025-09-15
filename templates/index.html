@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 3D Avatar Assistant</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        #container3D {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        /* Snow Animation */
+        .snow-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 2;
+            overflow: hidden;
+        }
+
+        .snowflake {
+            position: absolute;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 1em;
+            animation-name: snowfall;
+            animation-timing-function: linear;
+            animation-iteration-count: infinite;
+            user-select: none;
+        }
+
+        @keyframes snowfall {
+            0% {
+                transform: translateY(-100vh) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(100vh) rotate(360deg);
+                opacity: 0;
+            }
+        }
+
+        .container {
+            position: relative;
+            z-index: 10;
+            padding: 20px;
+            text-align: center;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .control-panel {
+            position: fixed;
+            bottom: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            z-index: 20;
+        }
+
+        .record-button {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: none;
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            color: white;
+            font-size: 2rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 25px rgba(238, 90, 36, 0.3);
+        }
+
+        .record-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 12px 35px rgba(238, 90, 36, 0.4);
+        }
+
+        .record-button.recording {
+            background: linear-gradient(45deg, #ff4757, #c44569);
+            animation: pulse 1.5s infinite;
+        }
+
+        .record-button.processing {
+            background: linear-gradient(45deg, #ffa502, #ff6348);
+            cursor: not-allowed;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .status-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-text {
+            color: white;
+            font-size: 1.1rem;
+            font-weight: 500;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
+        }
+
+        .processing-spinner {
+            display: none;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top: 2px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .language-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 20;
+            display: flex;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 25px;
+            padding: 5px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .language-btn {
+            padding: 8px 16px;
+            border: none;
+            background: transparent;
+            color: white;
+            cursor: pointer;
+            border-radius: 20px;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .language-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .language-btn.active {
+            background: rgba(255, 255, 255, 0.3);
+            color: white;
+            font-weight: 600;
+        }
+
+        .avatar-state-indicator {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 20;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px 15px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .avatar-state {
+            color: white;
+            font-size: 0.9rem;
+            font-weight: 500;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+        }
+
+        .error-message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 0, 0, 0.9);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            z-index: 30;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            text-align: center;
+            max-width: 80%;
+        }
+
+        .error-message.show {
+            opacity: 1;
+            visibility: visible;
+        }
+    </style>
+</head>
+<body>
+    <div id="container3D"></div>
+    
+    <!-- Snow Animation Container -->
+    <div class="snow-container" id="snowContainer"></div>
+    
+    <div class="container">
+        <div class="header">
+            <h1>🤖 AI 3D Avatar Assistant</h1>
+            <p>Speak with your AI companion</p>
+        </div>
+    </div>
+
+    <div class="language-toggle">
+        <button class="language-btn active" data-lang="en">English</button>
+        <button class="language-btn" data-lang="hi">हिंदी</button>
+        <button class="language-btn" data-lang="gu">ગુજરાતી</button>
+    </div>
+
+    <div class="control-panel">
+        <button class="record-button" id="recordButton">🎤</button>
+        <div class="status-container">
+            <div class="status-text" id="inputStatus">Tap to speak</div>
+            <div class="processing-spinner" id="processingSpinner"></div>
+        </div>
+    </div>
+
+    <div class="avatar-state-indicator">
+        <div class="avatar-state" id="avatarState">Idle</div>
+    </div>
+
+    <div class="error-message" id="errorMessage"></div>
+
+    <script type="module">
+        import * as THREE from "https://cdn.skypack.dev/three@0.129.0/build/three.module.js";
+        import { OrbitControls } from "https://cdn.skypack.dev/three@0.129.0/examples/jsm/controls/OrbitControls.js";
+        import { GLTFLoader } from "https://cdn.skypack.dev/three@0.129.0/examples/jsm/loaders/GLTFLoader.js";
+
+        // Snow Animation
+        function createSnowfall() {
+            const snowContainer = document.getElementById('snowContainer');
+            const snowflakes = ['❄', '❅', '❆', '✦', '✧', '✨'];
+            
+            function createSnowflake() {
+                const snowflake = document.createElement('div');
+                snowflake.className = 'snowflake';
+                snowflake.innerHTML = snowflakes[Math.floor(Math.random() * snowflakes.length)];
+                
+                // Random positioning and animation
+                snowflake.style.left = Math.random() * 100 + 'vw';
+                snowflake.style.animationDuration = Math.random() * 3 + 2 + 's';
+                snowflake.style.animationDelay = Math.random() * 2 + 's';
+                snowflake.style.fontSize = Math.random() * 10 + 10 + 'px';
+                snowflake.style.opacity = Math.random() * 0.6 + 0.4;
+                
+                snowContainer.appendChild(snowflake);
+                
+                // Remove snowflake after animation
+                setTimeout(() => {
+                    if (snowflake.parentNode) {
+                        snowflake.parentNode.removeChild(snowflake);
+                    }
+                }, 5000);
+            }
+            
+            // Create snowflakes periodically
+            setInterval(createSnowflake, 300);
+            
+            // Initial burst of snowflakes
+            for (let i = 0; i < 50; i++) {
+                setTimeout(createSnowflake, Math.random() * 2000);
+            }
+        }
+
+        // 3D Scene Setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+        
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setClearColor(0x000000, 0);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.outputEncoding = THREE.sRGBEncoding;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 0.8; // Reduced from 1.2 to reduce brightness
+        document.getElementById("container3D").appendChild(renderer.domElement);
+
+        let object, controls, mixer;
+        let avatarState = 'idle';
+        let isModelLoaded = false;
+        let basePlatform, platformLights = [];
+        let avatarBounds = { min: new THREE.Vector3(), max: new THREE.Vector3() };
+
+        // Animation actions storage
+        let animationActions = {
+            idle: null,
+            roaming: null,
+            hearing: null,
+            thinking: null,
+            talking: null
+        };
+
+        // Animation timing
+        let idleTimer = 0;
+        let roamingTimer = 0;
+        let isInIdlePhase = true;
+        let isUserInteracting = false;
+        const IDLE_DURATION = 2;
+        const ROAMING_DURATION = 7;
+
+        // Enhanced base platform with better alignment
+        function createBase() {
+            // Wait for avatar to load first
+            if (!object) {
+                setTimeout(createBase, 100);
+                return;
+            }
+
+            // Calculate avatar bounding box for proper alignment
+            const box = new THREE.Box3().setFromObject(object);
+            avatarBounds.min.copy(box.min);
+            avatarBounds.max.copy(box.max);
+            
+            const avatarHeight = box.max.y - box.min.y;
+            const avatarWidth = Math.max(box.max.x - box.min.x, box.max.z - box.min.z);
+            
+            // Position platform based on avatar's actual feet position
+            const platformY = box.min.y - 0.05; // Slightly below avatar's feet
+            const platformRadius = Math.max(avatarWidth * 0.8, 1.2); // Scale with avatar size
+
+            // Main platform with gradient material
+            const platformGeometry = new THREE.CylinderGeometry(platformRadius, platformRadius * 1.1, 0.2, 64);
+            const platformMaterial = new THREE.MeshPhysicalMaterial({ 
+                color: 0x2a2a2a,
+                metalness: 0.2, // Reduced metalness to reduce reflectivity
+                roughness: 0.6, // Increased roughness to reduce shine
+                transparent: true,
+                opacity: 0.8, // Reduced opacity
+                envMapIntensity: 0.3 // Reduced environment map intensity
+            });
+            basePlatform = new THREE.Mesh(platformGeometry, platformMaterial);
+            basePlatform.position.set(object.position.x, platformY, object.position.z);
+            basePlatform.receiveShadow = true;
+            basePlatform.castShadow = true;
+            scene.add(basePlatform);
+
+            // Add decorative rings - positioned relative to platform
+            const ring1Geometry = new THREE.TorusGeometry(platformRadius * 0.9, 0.015, 8, 32);
+            const ring1Material = new THREE.MeshPhysicalMaterial({ 
+                color: 0x4a90e2,
+                metalness: 0.4, // Reduced metalness
+                roughness: 0.5, // Increased roughness
+                emissive: 0x001122,
+                emissiveIntensity: 0.15 // Reduced emissive intensity
+            });
+            const ring1 = new THREE.Mesh(ring1Geometry, ring1Material);
+            ring1.position.set(object.position.x, platformY + 0.05, object.position.z);
+            ring1.rotation.x = Math.PI / 2;
+            scene.add(ring1);
+
+            const ring2Geometry = new THREE.TorusGeometry(platformRadius * 0.75, 0.01, 8, 32);
+            const ring2Material = new THREE.MeshPhysicalMaterial({ 
+                color: 0x667eea,
+                metalness: 0.5, // Reduced metalness
+                roughness: 0.4, // Increased roughness
+                emissive: 0x000033,
+                emissiveIntensity: 0.2 // Reduced emissive intensity
+            });
+            const ring2 = new THREE.Mesh(ring2Geometry, ring2Material);
+            ring2.position.set(object.position.x, platformY + 0.08, object.position.z);
+            ring2.rotation.x = Math.PI / 2;
+            scene.add(ring2);
+
+            // Add platform lights - positioned around the platform
+            platformLights = []; // Clear existing lights
+            for (let i = 0; i < 8; i++) {
+                const angle = (i / 8) * Math.PI * 2;
+                const x = object.position.x + Math.cos(angle) * platformRadius * 0.7;
+                const z = object.position.z + Math.sin(angle) * platformRadius * 0.7;
+                
+                const light = new THREE.PointLight(0x4a90e2, 0.2, 1.5); // Reduced intensity and distance
+                light.position.set(x, platformY + 0.1, z);
+                scene.add(light);
+                platformLights.push(light);
+                
+                // Add light orbs
+                const orbGeometry = new THREE.SphereGeometry(0.02, 16, 16);
+                const orbMaterial = new THREE.MeshBasicMaterial({ 
+                    color: 0x4a90e2,
+                    transparent: true,
+                    opacity: 0.6 // Reduced opacity
+                });
+                const orb = new THREE.Mesh(orbGeometry, orbMaterial);
+                orb.position.copy(light.position);
+                scene.add(orb);
+            }
+
+            // Add central crystal - positioned at platform center
+            const crystalGeometry = new THREE.ConeGeometry(0.06, 0.25, 6);
+            const crystalMaterial = new THREE.MeshPhysicalMaterial({
+                color: 0x87ceeb,
+                metalness: 0.05, // Reduced metalness
+                roughness: 0.2, // Increased roughness
+                transparent: true,
+                opacity: 0.7, // Reduced opacity
+                transmission: 0.8, // Reduced transmission
+                thickness: 0.3 // Reduced thickness
+            });
+            const crystal = new THREE.Mesh(crystalGeometry, crystalMaterial);
+            crystal.position.set(object.position.x, platformY + 0.15, object.position.z);
+            scene.add(crystal);
+        }
+
+        // Load GLTF models with animations
+        const loader = new GLTFLoader();
+        const clock = new THREE.Clock();
+        
+        const modelPaths = {
+            idle: `/static/model/Ladki/ladki.gltf`,
+            roaming: `/static/model/Roaming/roam.gltf`,
+            hearing: `/static/model/thinking/thinking.gltf`,
+            thinking: `/static/model/thinking/thinking.gltf`,
+            talking: `/static/model/talking/df.gltf`
+        };
+
+        // Load all animation models
+        async function loadAllAnimations() {
+            try {
+                const idleGltf = await loadModel(modelPaths.idle);
+                object = idleGltf.scene;
+                object.scale.set(1.2, 1.2, 1.2);
+                object.position.set(0, -1.2, -0.5);
+                
+                object.traverse(function(child) {
+                    if (child.isMesh) {
+                        child.castShadow = true;
+                        child.receiveShadow = true;
+                        // Reduce material reflectivity
+                        if (child.material) {
+                            child.material.envMapIntensity = 0.3; // Reduced from 1.0
+                            if (child.material.metalness !== undefined) {
+                                child.material.metalness = Math.min(child.material.metalness, 0.3);
+                            }
+                            if (child.material.roughness !== undefined) {
+                                child.material.roughness = Math.max(child.material.roughness, 0.4);
+                            }
+                        }
+                    }
+                });
+                
+                scene.add(object);
+                mixer = new THREE.AnimationMixer(object);
+                
+                if (idleGltf.animations && idleGltf.animations.length > 0) {
+                    animationActions.idle = mixer.clipAction(idleGltf.animations[0]);
+                    animationActions.idle.setLoop(THREE.LoopRepeat);
+                    animationActions.idle.play();
+                }
+                
+                isModelLoaded = true;
+                
+                // Create base after avatar is loaded and positioned
+                setTimeout(createBase, 100);
+                
+                await loadAdditionalAnimations();
+                
+            } catch (error) {
+                console.error('Error loading models:', error);
+                createFallbackAvatar();
+            }
+        }
+
+        function loadModel(path) {
+            return new Promise((resolve, reject) => {
+                loader.load(path, resolve, undefined, reject);
+            });
+        }
+
+        async function loadAdditionalAnimations() {
+            const animationTypes = ['roaming', 'hearing', 'thinking', 'talking'];
+            
+            for (const type of animationTypes) {
+                try {
+                    const gltf = await loadModel(modelPaths[type]);
+                    if (gltf.animations && gltf.animations.length > 0) {
+                        animationActions[type] = mixer.clipAction(gltf.animations[0]);
+                        animationActions[type].setLoop(THREE.LoopRepeat);
+                    }
+                } catch (error) {
+                    if (!animationActions[type] && animationActions.idle) {
+                        animationActions[type] = animationActions.idle.clone();
+                    }
+                }
+            }
+        }
+
+        function createFallbackAvatar() {
+            const group = new THREE.Group();
+            
+            const headGeometry = new THREE.SphereGeometry(0.3, 32, 32);
+            const headMaterial = new THREE.MeshPhysicalMaterial({ 
+                color: 0xffdbac,
+                metalness: 0.05, // Reduced metalness
+                roughness: 0.6, // Increased roughness
+                transparent: true,
+                opacity: 0.9
+            });
+            const head = new THREE.Mesh(headGeometry, headMaterial);
+            head.position.y = 0.3;
+            head.castShadow = true;
+            head.receiveShadow = true;
+            group.add(head);
+
+            const bodyGeometry = new THREE.CylinderGeometry(0.2, 0.25, 0.6, 8);
+            const bodyMaterial = new THREE.MeshPhysicalMaterial({ 
+                color: 0x4a90e2,
+                metalness: 0.1, // Reduced metalness
+                roughness: 0.7, // Increased roughness
+                transparent: true,
+                opacity: 0.8
+            });
+            const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+            body.position.y = -0.1;
+            body.castShadow = true;
+            body.receiveShadow = true;
+            group.add(body);
+
+            object = group;
+            object.position.set(0, -1.2, -0.5);
+            scene.add(object);
+            isModelLoaded = true;
+            
+            // Create base after fallback avatar is positioned
+            setTimeout(createBase, 100);
+        }
+
+        function switchAnimation(fromAction, toAction, duration = 0.5) {
+            if (!fromAction || !toAction || fromAction === toAction) return;
+            
+            fromAction.fadeOut(duration);
+            toAction.reset().fadeIn(duration).play();
+        }
+
+        function getCurrentActiveAnimation() {
+            for (const [key, action] of Object.entries(animationActions)) {
+                if (action && action.isRunning() && action.getEffectiveWeight() > 0.5) {
+                    return key;
+                }
+            }
+            return 'idle';
+        }
+
+        function updateIdleRoamingCycle(deltaTime) {
+            if (isUserInteracting) return;
+
+            if (isInIdlePhase) {
+                idleTimer += deltaTime;
+                if (idleTimer >= IDLE_DURATION) {
+                    if (animationActions.idle && animationActions.roaming) {
+                        switchAnimation(animationActions.idle, animationActions.roaming);
+                    }
+                    avatarState = 'roaming';
+                    updateAvatarStateDisplay();
+                    isInIdlePhase = false;
+                    idleTimer = 0;
+                }
+            } else {
+                roamingTimer += deltaTime;
+                if (roamingTimer >= ROAMING_DURATION) {
+                    if (animationActions.roaming && animationActions.idle) {
+                        switchAnimation(animationActions.roaming, animationActions.idle);
+                    }
+                    avatarState = 'idle';
+                    updateAvatarStateDisplay();
+                    isInIdlePhase = true;
+                    roamingTimer = 0;
+                }
+            }
+        }
+
+        function updateAvatarStateDisplay() {
+            document.getElementById('avatarState').textContent = avatarState.charAt(0).toUpperCase() + avatarState.slice(1);
+        }
+
+        function setAvatarState(newState) {
+            avatarState = newState;
+            
+            if (['listening', 'thinking', 'speaking'].includes(newState)) {
+                isUserInteracting = true;
+                idleTimer = 0;
+                roamingTimer = 0;
+            } else if (newState === 'idle') {
+                isUserInteracting = false;
+                isInIdlePhase = true;
+                idleTimer = 0;
+                roamingTimer = 0;
+            }
+            
+            updateAvatarStateDisplay();
+            
+            if (isModelLoaded && mixer) {
+                const currentActiveKey = getCurrentActiveAnimation();
+                const currentActiveAction = animationActions[currentActiveKey];
+                
+                const stateActions = {
+                    listening: animationActions.hearing,
+                    thinking: animationActions.thinking,
+                    speaking: animationActions.talking,
+                    idle: animationActions.idle,
+                    error: animationActions.idle
+                };
+                
+                const targetAction = stateActions[newState];
+                if (targetAction) {
+                    switchAnimation(currentActiveAction, targetAction);
+                }
+            }
+        }
+
+        // Reduced lighting setup for less whitish appearance
+        const topLight = new THREE.DirectionalLight(0xffffff, 1.8); // Reduced from 3.5
+        topLight.position.set(0, 15, 10);
+        topLight.castShadow = true;
+        topLight.shadow.mapSize.width = 2048; // Reduced from 4096 for performance
+        topLight.shadow.mapSize.height = 2048;
+        topLight.shadow.camera.near = 0.1;
+        topLight.shadow.camera.far = 50;
+        topLight.shadow.camera.left = -10;
+        topLight.shadow.camera.right = 10;
+        topLight.shadow.camera.top = 10;
+        topLight.shadow.camera.bottom = -10;
+        topLight.shadow.bias = -0.0001;
+        scene.add(topLight);
+        
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.8); // Reduced from 2.0
+        scene.add(ambientLight);
+
+        const rimLight = new THREE.DirectionalLight(0x667eea, 0.8); // Reduced from 2.0
+        rimLight.position.set(-8, 5, -8);
+        rimLight.castShadow = true;
+        scene.add(rimLight);
+
+        const fillLight = new THREE.DirectionalLight(0xffffff, 0.6); // Reduced from 1.5
+        fillLight.position.set(5, 8, 12);
+        scene.add(fillLight);
+
+        // Reduced accent lights
+        const accentLight1 = new THREE.SpotLight(0x4a90e2, 0.8, 10, Math.PI / 6, 0.25, 1); // Reduced from 2.0
+        accentLight1.position.set(-3, 3, 2);
+        accentLight1.target.position.set(0, 0, 0);
+        scene.add(accentLight1);
+        scene.add(accentLight1.target);
+
+        const accentLight2 = new THREE.SpotLight(0x764ba2, 0.6, 10, Math.PI / 6, 0.25, 1); // Reduced from 1.8
+        accentLight2.position.set(3, 3, 2);
+        accentLight2.target.position.set(0, 0, 0);
+        scene.add(accentLight2);
+        scene.add(accentLight2.target);
+
+        // Reduced key light for better avatar illumination
+        const keyLight = new THREE.DirectionalLight(0xffffff, 1.0); // Reduced from 2.5
+        keyLight.position.set(2, 5, 5);
+        keyLight.castShadow = true;
+        scene.add(keyLight);
+
+        // Camera and controls
+        camera.position.z = 2.5;
+        camera.position.y = 0.5;
+
+        controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.maxDistance = 5;
+        controls.minDistance = 1;
+        controls.enableZoom = false;
+
+        // Animate platform lights with reduced intensity
+        function animatePlatformLights() {
+            const time = Date.now() * 0.001;
+            platformLights.forEach((light, index) => {
+                light.intensity = 0.15 + Math.sin(time * 2 + index) * 0.3; // Reduced base and variation
+            });
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            const delta = clock.getDelta();
+            
+            if (mixer) mixer.update(delta);
+            updateIdleRoamingCycle(delta);
+            animatePlatformLights();
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Initialize snow animation
+        createSnowfall();
+        
+        loadAllAnimations();
+        animate();
+        setAvatarState('idle');
+
+        window.avatarController = {
+            setState: setAvatarState
+        };
+    </script>
+
+    <script>
+        // Language management
+        let currentLanguage = 'en';
+        
+        // Language toggle functionality
+        document.querySelectorAll('.language-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.language-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentLanguage = btn.dataset.lang;
+            });
+        });
+
+        // Voice recording functionality
+        let mediaRecorder;
+        let audioChunks = [];
+        let isRecording = false;
+
+        const recordButton = document.getElementById('recordButton');
+        const inputStatus = document.getElementById('inputStatus');
+        const processingSpinner = document.getElementById('processingSpinner');
+        const errorMessage = document.getElementById('errorMessage');
+
+        async function initializeRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                
+                mediaRecorder.ondataavailable = event => {
+                    audioChunks.push(event.data);
+                };
+                
+                mediaRecorder.onstop = async () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    audioChunks = [];
+                    await sendAudioToServer(audioBlob);
+                };
+                
+                recordButton.disabled = false;
+                inputStatus.textContent = 'Hello, Tap to Talk';
+                window.avatarController?.setState('idle');
+            } catch (error) {
+                console.error('Error accessing microphone:', error);
+                showError('Microphone access denied. Please allow microphone access and refresh.');
+                window.avatarController?.setState('error');
+            }
+        }
+
+        async function sendAudioToServer(audioBlob) {
+            const formData = new FormData();
+            formData.append('audio_data', audioBlob, 'recording.webm');
+            formData.append('language', currentLanguage);
+            
+            try {
+                window.avatarController?.setState('thinking');
+                inputStatus.textContent = 'Processing...';
+                processingSpinner.style.display = 'block';
+                recordButton.classList.add('processing');
+                
+                const response = await fetch('/process', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (response.ok) {
+                    const audioUrl = URL.createObjectURL(await response.blob());
+                    const audio = new Audio(audioUrl);
+                    
+                    window.avatarController?.setState('speaking');
+                    inputStatus.textContent = 'Playing response...';
+                    
+                    audio.play();
+                    
+                    audio.onended = () => {
+                        window.avatarController?.setState('idle');
+                        inputStatus.textContent = 'Tap to speak';
+                    };
+                } else {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Server error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showError(error.message || 'Failed to process audio');
+                inputStatus.textContent = 'Error occurred';
+                window.avatarController?.setState('error');
+                
+                setTimeout(() => {
+                    window.avatarController?.setState('idle');
+                    inputStatus.textContent = 'Tap to speak';
+                }, 3000);
+            } finally {
+                processingSpinner.style.display = 'none';
+                recordButton.disabled = false;
+                recordButton.classList.remove('recording', 'processing');
+            }
+        }
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.classList.add('show');
+            setTimeout(() => {
+                errorMessage.classList.remove('show');
+            }, 5000);
+        }
+
+        recordButton.addEventListener('click', () => {
+            if (!mediaRecorder) {
+                showError('Microphone not initialized');
+                window.avatarController?.setState('error');
+                return;
+            }
+
+            if (!isRecording) {
+                audioChunks = [];
+                mediaRecorder.start();
+                isRecording = true;
+                recordButton.classList.add('recording');
+                recordButton.disabled = false;
+                inputStatus.textContent = 'Recording... (click to stop)';
+                window.avatarController?.setState('listening');
+            } else {
+                mediaRecorder.stop();
+                isRecording = false;
+                recordButton.classList.remove('recording');
+                recordButton.disabled = true;
+                inputStatus.textContent = 'Processing...';
+                window.avatarController?.setState('thinking');
+            }
+        });
+
+        window.addEventListener('load', () => {
+            initializeRecording();
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.code === 'Space' && !event.repeat) {
+                event.preventDefault();
+                recordButton.click();
+            }
+        });
+    </script>
+</body>
+</html>
