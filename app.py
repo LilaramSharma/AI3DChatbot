@@ -27,7 +27,7 @@ CORS(app)
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
 # 🔐 Set Gemini API
-API_KEY = "AIzaSyAqzYkdcMBQqtVE7JKAYXi7iBBk5R0aW58"
+API_KEY = ""
 ENDPOINT = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={API_KEY}"
 
 # Language configuration mapping frontend language codes to speech recognition and TTS
